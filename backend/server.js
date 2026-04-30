@@ -12,8 +12,8 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
-const swaggerUi = require('swagger-ui-express');
-const swaggerSpec = require('./src/docs/swagger');
+//const swaggerUi = require('swagger-ui-express');
+//const swaggerSpec = require('./src/docs/swagger');
 const morgan = require('morgan');
 const { logger } = require('./src/utils/logger');
 // MongoDB ulanish
@@ -25,7 +25,7 @@ mongoose.connect(process.env.MONGODB_URI)
 app.use('/api/auth', require('./src/routes/authRoutes'));
 app.use('/api/events', require('./src/routes/eventRoutes'));
 app.use('/api/bookings', require('./src/routes/bookingRoutes'));
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+//app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 app.use(morgan('combined', { 
   stream: { 
@@ -62,5 +62,7 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 5001;
 app.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
+  logger.info(`🚀 Server running on http://localhost:${PORT}`);
+  logger.info(`📝 Health: http://localhost:${PORT}/health`);
+  logger.info(`📊 Status: http://localhost:${PORT}/status`);
 });
