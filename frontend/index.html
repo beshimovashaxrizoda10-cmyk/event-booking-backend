@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EventHub | Tadbirlar dunyosi</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+    <div class="app">
+        <nav class="navbar">
+            <div class="logo"><i class="fas fa-calendar-check"></i> EventHub</div>
+            <div class="nav-menu" id="navMenu">
+                <button data-page="events" class="nav-link active">📅 Tadbirlar</button>
+                <button data-page="my-bookings" class="nav-link">📌 Mening bandlovlarim</button>
+                <button data-page="admin-events" class="nav-link admin-only" style="display:none;">⚙️ Boshqaruv</button>
+                <div class="auth-buttons">
+                    <button id="loginBtn" class="btn-outline">Kirish</button>
+                    <button id="registerBtn" class="btn-primary">Ro'yxatdan o'tish</button>
+                    <button id="logoutBtn" class="btn-outline" style="display:none;">Chiqish</button>
+                </div>
+            </div>
+            <div class="menu-icon" id="menuIcon"><i class="fas fa-bars"></i></div>
+        </nav>
+
+    </nav>
+
+    <!-- Qidiruv va filtr paneli -->
+    <div class="search-bar">
+        <input type="text" id="searchInput" placeholder="🔍 Qidiruv (nomi, spiker)">
+        <select id="categoryFilter">
+            <option value="">Barcha kategoriyalar</option>
+            <option value="Technology">Technology</option>
+            <option value="Business">Business</option>
+            <option value="Marketing">Marketing</option>
+            <option value="Design">Design</option>
+            <option value="Health">Health</option>
+            <option value="Education">Education</option>
+            <option value="Other">Other</option>
+        </select>
+        <select id="locationFilter">
+            <option value="">Barcha joylar</option>
+            <option value="Online">Online</option>
+            <option value="Tashkent">Tashkent</option>
+            <option value="Samarqand">Samarqand</option>
+            <option value="Bukhara">Bukhara</option>
+            <option value="Andijan">Andijan</option>
+            <option value="Other">Other</option>
+        </select>
+        <input type="date" id="startDate" placeholder="📅 Sanadan">
+        <input type="date" id="endDate" placeholder="📅 Sanagacha">
+        <button id="applyFilterBtn" class="btn-primary">Filtrla</button>
+    </div>
+
+    <main id="mainContent">
+        <main id="mainContent">
+            <div class="loader" id="loader" style="display:none;">⏳ Yuklanmoqda...</div>
+            <div id="dynamicContent"></div>
+        </main>
+        <div id="authModal" class="modal">
+            <div class="modal-card">
+                <span class="close">&times;</span>
+                <div id="authForm"></div>
+            </div>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
