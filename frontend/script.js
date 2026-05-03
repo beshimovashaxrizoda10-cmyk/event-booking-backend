@@ -1,5 +1,5 @@
 // API manzili – local testda backend manzili, deployda o‘zgaradi
-const API_BASE = 'http://localhost:5001';   // yoki backend deploy URL
+const API_BASE = 'https://event-booking-api2026.onrender.com';
 let token = localStorage.getItem('token');
 let currentUser = null;
 
@@ -73,6 +73,7 @@ async function loadEvents() {
         });
         html += `</div>`;
         dynamicContent.innerHTML = html;
+
         document.querySelectorAll('.book-btn').forEach(btn => {
             btn.addEventListener('click', () => bookEvent(btn.dataset.id));
         });
@@ -84,6 +85,7 @@ async function loadEvents() {
         showLoader(false);
     }
 }
+
 async function loadMyBookings() {
     if (!token) {
         dynamicContent.innerHTML = `<p>Iltimos, avval <button id="loginFirst">kiring</button></p>`;

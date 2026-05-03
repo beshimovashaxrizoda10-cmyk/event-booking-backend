@@ -32,6 +32,11 @@ app.use(morgan('combined', {
     write: (message) => logger.info(message.trim()) 
   } 
 }));
+
+app.get('/health', (req, res) => {
+  res.json({ status: 'OK', timestamp: new Date() });
+});
+
 app.get('/status', (req, res) => {
   res.json({
     status: 'OK',
