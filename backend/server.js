@@ -31,18 +31,28 @@ app.post('/api/upload', protect, hasRole('admin', 'organizer'), upload.single('i
   if (!req.file) {
     return res.status(400).json({ success: false, error: 'Rasm fayli kerak' });
   }
+  const apiKey = process.env.IMGBB_API_KEY;
+  if (!apiKey) {
+    return res.status(500).json({ success: false, error: 'IMGBB_API_KEY topilmadi' });
+  }
   try {
-    const apiKey = process.env.IMGBB_API_KEY;
-    if (!apiKey) throw new Error('IMGBB_API_KEY topilmadi');
-    const response = await imgbbUploader(apiKey, req.file.buffer);
-    const imageUrl = response.url;
-    res.json({ success: true, imageUrl });
+    const formData = new FormData();
+    formData.append('image', req.file.buffer.toString('base64')); // ImgBB base64 qabul qiladi
+    const response = await fetch(`https://api.imgbb.com/1/upload?key=${apiKey}`, {
+      method: 'POST',
+      body: formData,
+    });
+    const data = await response.json();
+    if (data.success) {
+      res.json({ success: true, imageUrl: data.data.url });
+    } else {
+      throw new Error(data.error?.message || 'ImgBB xatosi');
+    }
   } catch (err) {
     console.error('Rasm yuklash xatosi:', err);
     res.status(500).json({ success: false, error: 'Rasm yuklashda xatolik' });
   }
 });
-
 // Routes
 app.use('/api/auth', require('./src/routes/authRoutes'));
 app.use('/api/events', require('./src/routes/eventRoutes'));
