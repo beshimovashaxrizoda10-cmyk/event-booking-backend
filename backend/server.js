@@ -3,6 +3,18 @@ const mongoose = require('mongoose');
 const dotenv = require('dotenv');
 const cors = require('cors');
 
+
+const multer = require('multer');
+const path = require('path');
+
+// Rasm saqlash joyi (Render’da vaqtinchalik disk)
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, 'uploads/'),
+  filename: (req, file, cb) => cb(null, Date.now() + path.extname(file.originalname))
+});
+const upload = multer({ storage, limits: { fileSize: 5 * 1024 * 1024 } }); // 5MB
+
+
 const dns = require('dns');
 dns.setServers(['1.1.1.1', '8.8.8.8']);
 
@@ -26,6 +38,20 @@ app.use('/api/auth', require('./src/routes/authRoutes'));
 app.use('/api/events', require('./src/routes/eventRoutes'));
 app.use('/api/bookings', require('./src/routes/bookingRoutes'));
 //app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+
+
+// Rasm yuklash (faqat admin/organizer)
+const { protect, hasRole } = require('./src/middlewares/authMiddleware');
+
+app.post('/api/upload', protect, hasRole('admin', 'organizer'), upload.single('image'), (req, res) => {
+  if (!req.file) return res.status(400).json({ success: false, error: 'Fayl yuklanmadi' });
+  const imageUrl = `/uploads/${req.file.filename}`;
+  res.json({ success: true, imageUrl });
+});
+
+// Yuklangan rasmlarni xizmat qilish
+app.use('/uploads', express.static('uploads'));
+
 
 app.use(morgan('combined', { 
   stream: { 
