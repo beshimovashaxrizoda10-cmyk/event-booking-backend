@@ -6,6 +6,13 @@ let currentUser = null;
 const dynamicContent = document.getElementById('dynamicContent');
 const loader = document.getElementById('loader');
 
+const pages = {
+    events: loadEvents,
+    'my-bookings': loadMyBookings,
+    'admin-events': loadAdminEvents,
+    calendar: showCalendar  // yangi qator
+};
+
 async function apiRequest(endpoint, method = 'GET', body = null) {
     const headers = { 'Content-Type': 'application/json' };
     if (token) headers['Authorization'] = `Bearer ${token}`;
@@ -61,6 +68,7 @@ async function loadEvents() {
             html += `
                 <div class="event-card">
                     <h3>${ev.title}</h3>
+                    <img src="${ev.image || 'https://via.placeholder.com/300x160?text=Tadbir'}" alt="${ev.title}" style="width:100%; height:160px; object-fit:cover; border-radius:1rem; margin-bottom:0.5rem;">
                     <p><i class="fas fa-calendar"></i> ${new Date(ev.date).toLocaleDateString('uz')}</p>
                     <p><i class="fas fa-clock"></i> ${ev.startTime} — ${ev.endTime}</p>
                     <p><i class="fas fa-location-dot"></i> ${ev.location} ${ev.address ? ', ' + ev.address : ''}</p>
@@ -214,6 +222,10 @@ async function showCreateEventForm() {
                             <option value="Other">Other</option>
                         </select>
                     </div>
+                    <div class="form-group">
+                        <label>Tadbir rasmi (ixtiyoriy):</label>
+                        <input type="file" id="eventImage" accept="image/*">
+                    </div>
                     <div class="form-group"><input name="speaker" placeholder="Spiker" required></div>
                     <button type="submit" class="btn-primary">Yaratish</button>
                 </form>
@@ -225,12 +237,39 @@ async function showCreateEventForm() {
         e.preventDefault();
         const formData = new FormData(e.target);
         const body = Object.fromEntries(formData.entries());
-        await apiRequest('/api/events', 'POST', body);
-        alert('Tadbir yaratildi!');
-        closeModal('createEventModal');
-        loadAdminEvents();
-        loadEvents();
-    });
+      
+        // Rasm yuklash
+        const fileInput = document.getElementById('eventImage');
+        if (fileInput.files.length > 0) {
+          const uploadFormData = new FormData();
+          uploadFormData.append('image', fileInput.files[0]);
+          try {
+            const uploadRes = await fetch(`${API_BASE}/api/upload`, {
+              method: 'POST',
+              headers: { 'Authorization': `Bearer ${token}` },
+              body: uploadFormData
+            });
+            const uploadData = await uploadRes.json();
+            if (uploadData.success) {
+              body.image = uploadData.imageUrl;
+            } else {
+              console.warn('Rasm yuklanmadi:', uploadData.error);
+            }
+          } catch (err) {
+            console.warn('Rasm yuklashda xatolik:', err);
+          }
+        }
+      
+        try {
+          await apiRequest('/api/events', 'POST', body);
+          alert('Tadbir yaratildi!');
+          closeModal('createEventModal');
+          loadAdminEvents();
+          loadEvents();
+        } catch (err) {
+          alert(err.message);
+        }
+      });
 }
 
 async function showEditEventForm(eventId) {
@@ -380,6 +419,47 @@ function initNavigation() {
     document.getElementById('menuIcon')?.addEventListener('click', () => document.getElementById('navMenu').classList.toggle('show'));
 }
 
+
+async function showCalendar() {
+    showLoader(true);
+    try {
+        const eventsData = await apiRequest('/api/events');
+        const events = eventsData.data.map(ev => ({
+            title: ev.title,
+            start: ev.date,
+            url: `/event/${ev._id}`, // ixtiyoriy, event sahifasiga o'tish
+            extendedProps: {
+                location: ev.location,
+                availableSeats: ev.availableSeats
+            }
+        }));
+        let html = `<div id="calendar" style="background: white; padding: 1rem; border-radius: 1rem;"></div>`;
+        dynamicContent.innerHTML = html;
+        
+        const calendarEl = document.getElementById('calendar');
+        const calendar = new FullCalendar.Calendar(calendarEl, {
+            initialView: 'dayGridMonth',
+            events: events,
+            headerToolbar: {
+                left: 'prev,next today',
+                center: 'title',
+                right: 'dayGridMonth,dayGridWeek'
+            },
+            locale: 'uz', // o‘zbekcha (agar kerak bo‘lsa)
+            eventClick: function(info) {
+                // Event kliklanganda batafsil ma'lumot yoki band qilish oynasi
+                alert(`Tadbir: ${info.event.title}\nManzil: ${info.event.extendedProps.location}\nBo‘sh joy: ${info.event.extendedProps.availableSeats}`);
+            }
+        });
+        calendar.render();
+    } catch (err) {
+        dynamicContent.innerHTML = `<div class="error">Xatolik: ${err.message}</div>`;
+    } finally {
+        showLoader(false);
+    }
+}
+
+
 // Admin panel (soddalashtirilgan)
 async function loadAdminEvents() {
     if (!token || !['admin', 'organizer'].includes(currentUser?.role)) {
@@ -403,15 +483,16 @@ async function loadAdminEvents() {
             const card = document.createElement('div');
             card.className = 'event-card';
             card.innerHTML = `
-                <h3>${ev.title}</h3>
-                <p>Bo‘sh joy: ${ev.availableSeats}/${ev.totalSeats}</p>
-                <p>Sana: ${new Date(ev.date).toLocaleDateString('uz')}</p>
-                <div style="display:flex; gap:0.5rem; margin-top:0.5rem">
-                    <button class="edit-event btn-outline" data-id="${ev._id}">✏️ Tahrirlash</button>
-                    <button class="delete-event btn-outline" data-id="${ev._id}">🗑️ O‘chirish</button>
-                    <button class="attendees-btn btn-outline" data-id="${ev._id}">👥 Ishtirokchilar</button>
-                </div>
-            `;
+    <img src="${ev.image || 'https://via.placeholder.com/300x160?text=Tadbir'}" alt="${ev.title}" style="width:100%; height:160px; object-fit:cover; border-radius:1rem; margin-bottom:0.5rem;">
+    <h3>${ev.title}</h3>
+    <p>Bo‘sh joy: ${ev.availableSeats}/${ev.totalSeats}</p>
+    <p>Sana: ${new Date(ev.date).toLocaleDateString('uz')}</p>
+    <div style="display:flex; gap:0.5rem; margin-top:0.5rem">
+        <button class="edit-event btn-outline" data-id="${ev._id}">✏️ Tahrirlash</button>
+        <button class="delete-event btn-outline" data-id="${ev._id}">🗑️ O‘chirish</button>
+        <button class="attendees-btn btn-outline" data-id="${ev._id}">👥 Ishtirokchilar</button>
+    </div>
+`;
             grid.appendChild(card);
         });
 

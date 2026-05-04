@@ -2,42 +2,11 @@ const express = require('express');
 const mongoose = require('mongoose');
 const dotenv = require('dotenv');
 const cors = require('cors');
-
-
 const multer = require('multer');
-const path = require('path');
-
-
-
-// Rasm saqlash joyi (Render’da vaqtinchalik disk)
-const cloudinary = require('cloudinary').v2;
-const { CloudinaryStorage } = require('multer-storage-cloudinary');
-const multer = require('multer');
-
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET
-});
-
-const storage = new CloudinaryStorage({
-  cloudinary: cloudinary,
-  params: {
-    folder: 'event_images',
-    allowed_formats: ['jpg', 'png', 'jpeg', 'gif'],
-    transformation: [{ width: 500, height: 300, crop: 'limit' }]
-  }
-});
-const upload = multer({ storage: storage });
-
-// Rasm yuklash endpointi
-app.post('/api/upload', protect, hasRole('admin', 'organizer'), upload.single('image'), (req, res) => {
-  if (!req.file) return res.status(400).json({ success: false, error: 'Fayl yuklanmadi' });
-  // Cloudinary'dan olingan URL
-  const imageUrl = req.file.path; // yoki req.file.secure_url
-  res.json({ success: true, imageUrl });
-});
-
+const imgbbUploader = require('imgbb-uploader');
+const morgan = require('morgan');
+const { logger } = require('./src/utils/logger');
+const { protect, hasRole } = require('./src/middlewares/authMiddleware');
 
 const dns = require('dns');
 dns.setServers(['1.1.1.1', '8.8.8.8']);
@@ -48,41 +17,38 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
-//const swaggerUi = require('swagger-ui-express');
-//const swaggerSpec = require('./src/docs/swagger');
-const morgan = require('morgan');
-const { logger } = require('./src/utils/logger');
 // MongoDB ulanish
 mongoose.connect(process.env.MONGODB_URI)
   .then(() => console.log('✅ MongoDB connected successfully!'))
   .catch((err) => console.log('❌ MongoDB error:', err.message));
 
+// ImgBB uchun multer sozlamalari (xotiraga saqlash)
+const storage = multer.memoryStorage();
+const upload = multer({ storage });
+
+// Rasm yuklash endpointi (ImgBB)
+app.post('/api/upload', protect, hasRole('admin', 'organizer'), upload.single('image'), async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ success: false, error: 'Rasm fayli kerak' });
+  }
+  try {
+    const apiKey = process.env.IMGBB_API_KEY;
+    if (!apiKey) throw new Error('IMGBB_API_KEY topilmadi');
+    const response = await imgbbUploader(apiKey, req.file.buffer);
+    const imageUrl = response.url;
+    res.json({ success: true, imageUrl });
+  } catch (err) {
+    console.error('Rasm yuklash xatosi:', err);
+    res.status(500).json({ success: false, error: 'Rasm yuklashda xatolik' });
+  }
+});
+
 // Routes
 app.use('/api/auth', require('./src/routes/authRoutes'));
 app.use('/api/events', require('./src/routes/eventRoutes'));
 app.use('/api/bookings', require('./src/routes/bookingRoutes'));
-//app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
-
-// Rasm yuklash (faqat admin/organizer)
-const { protect, hasRole } = require('./src/middlewares/authMiddleware');
-
-app.post('/api/upload', protect, hasRole('admin', 'organizer'), upload.single('image'), (req, res) => {
-  if (!req.file) return res.status(400).json({ success: false, error: 'Fayl yuklanmadi' });
-  const imageUrl = `/uploads/${req.file.filename}`;
-  res.json({ success: true, imageUrl });
-});
-
-// Yuklangan rasmlarni xizmat qilish
-app.use('/uploads', express.static('uploads'));
-
-
-app.use(morgan('combined', { 
-  stream: { 
-    write: (message) => logger.info(message.trim()) 
-  } 
-}));
-
+// Health check va boshqa endpointlar
 app.get('/health', (req, res) => {
   res.json({ status: 'OK', timestamp: new Date() });
 });
@@ -100,20 +66,20 @@ app.get('/', (req, res) => {
   res.json({
     success: true,
     message: 'Event Booking System API',
-    database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
-    endpoints: {
-      auth: '/api/auth',
-      events: '/api/events'
-    }
+    database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected'
   });
 });
 
+// Morgan loglarini winstonga yozish
+app.use(morgan('combined', { 
+  stream: { write: (message) => logger.info(message.trim()) } 
+}));
 
+// Error handler (eng oxirida)
 app.use((err, req, res, next) => {
   logger.error(`${err.statusCode || 500} - ${err.message} - ${req.originalUrl} - ${req.method} - ${req.ip}`);
   res.status(err.statusCode || 500).json({ success: false, error: err.message });
 });
-
 
 const PORT = process.env.PORT || 5001;
 app.listen(PORT, () => {
