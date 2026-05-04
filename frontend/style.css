@@ -348,3 +348,28 @@ body {
     grid-template-columns: 1fr 1fr;
     gap: 1rem;
 }
+
+
+
+
+/* Tadbir kartalaridagi tugmalar qatorini moslashuvchan qilish */
+.event-card > div:last-child {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-top: 1rem;
+}
+
+/* Tugmalarni kichik ekranlarda ixchamroq qilish */
+.btn-outline {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.85rem;
+    white-space: nowrap;
+}
+
+/* Agar karta ichidagi matn sig‘masa */
+.event-card {
+    word-break: break-word;
+    overflow: hidden;
+}
