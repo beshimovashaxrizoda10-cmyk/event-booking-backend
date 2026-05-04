@@ -7,12 +7,36 @@ const cors = require('cors');
 const multer = require('multer');
 const path = require('path');
 
+
+
 // Rasm saqlash joyi (Render’da vaqtinchalik disk)
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, 'uploads/'),
-  filename: (req, file, cb) => cb(null, Date.now() + path.extname(file.originalname))
+const cloudinary = require('cloudinary').v2;
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
+const multer = require('multer');
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET
 });
-const upload = multer({ storage, limits: { fileSize: 5 * 1024 * 1024 } }); // 5MB
+
+const storage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: 'event_images',
+    allowed_formats: ['jpg', 'png', 'jpeg', 'gif'],
+    transformation: [{ width: 500, height: 300, crop: 'limit' }]
+  }
+});
+const upload = multer({ storage: storage });
+
+// Rasm yuklash endpointi
+app.post('/api/upload', protect, hasRole('admin', 'organizer'), upload.single('image'), (req, res) => {
+  if (!req.file) return res.status(400).json({ success: false, error: 'Fayl yuklanmadi' });
+  // Cloudinary'dan olingan URL
+  const imageUrl = req.file.path; // yoki req.file.secure_url
+  res.json({ success: true, imageUrl });
+});
 
 
 const dns = require('dns');
