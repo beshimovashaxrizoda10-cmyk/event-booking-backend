@@ -11,7 +11,7 @@ const pages = {
     'my-bookings': loadMyBookings,
     'admin-events': loadAdminEvents,
     calendar: showCalendar,
-    users: loadUsersList   // YANGI
+    users: loadUsersList  
 };
 
 async function apiRequest(endpoint, method = 'GET', body = null) {
@@ -146,6 +146,69 @@ async function loadMyBookings() {
     } catch (err) {
         dynamicContent.innerHTML = `<div class="error">${err.message}</div>`;
     } finally { 
+        showLoader(false);
+    }
+}
+
+async function loadUsersList() {
+    if (!token || currentUser?.role !== 'admin') {
+        dynamicContent.innerHTML = '<p>❌ Ruxsat yo‘q</p>';
+        return;
+    }
+    showLoader(true);
+    try {
+        const data = await apiRequest('/api/auth/users');
+        const users = data.data;
+        let html = `<h2>👥 Foydalanuvchilar</h2>
+                    <div style="overflow-x:auto;">
+                        <table style="width:100%; border-collapse:collapse; background:#1e293b; border-radius:1rem;">
+                            <thead>
+                                <tr>
+                                    <th style="padding:0.75rem;">Ism</th>
+                                    <th style="padding:0.75rem;">Email</th>
+                                    <th style="padding:0.75rem;">Roli</th>
+                                    <th style="padding:0.75rem;">Amal</th>
+                                </tr>
+                            </thead>
+                            <tbody>`;
+        users.forEach(user => {
+            html += `
+                <tr style="border-top:1px solid #334155;">
+                    <td style="padding:0.75rem;">${user.name}</td>
+                    <td style="padding:0.75rem;">${user.email}</td>
+                    <td style="padding:0.75rem;">${user.role}</td>
+                    <td style="padding:0.75rem;">
+                        <select data-id="${user._id}" class="role-select" ${user._id === currentUser.id ? 'disabled' : ''}>
+                            <option value="user" ${user.role === 'user' ? 'selected' : ''}>User</option>
+                            <option value="organizer" ${user.role === 'organizer' ? 'selected' : ''}>Organizer</option>
+                            <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>Admin</option>
+                        </select>
+                        <button class="save-role-btn" data-id="${user._id}" ${user._id === currentUser.id ? 'disabled' : ''}>Saqlash</button>
+                    </td>
+                </tr>
+            `;
+        });
+        html += `</tbody>${'</table>'}</div>`;
+        dynamicContent.innerHTML = html;
+
+        // Saqlash tugmalariga event listener
+        document.querySelectorAll('.save-role-btn').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const userId = btn.dataset.id;
+                const select = document.querySelector(`.role-select[data-id="${userId}"]`);
+                const newRole = select.value;
+                try {
+                    await apiRequest(`/api/admin/users/${userId}/role`, 'PATCH', { role: newRole });
+                    alert('Rol muvaffaqiyatli o‘zgartirildi');
+                    loadUsersList(); // ro‘yxatni yangilash
+                } catch (err) {
+                    alert(`Xatolik: ${err.message}`);
+                }
+            });
+        });
+    } catch (err) {
+        dynamicContent.innerHTML = `<div class="error">${err.message}</div>`;
+    } finally {
         showLoader(false);
     }
 }
