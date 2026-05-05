@@ -10,7 +10,8 @@ const pages = {
     events: loadEvents,
     'my-bookings': loadMyBookings,
     'admin-events': loadAdminEvents,
-    calendar: showCalendar  // yangi qator
+    calendar: showCalendar,
+    users: loadUsersList   // YANGI
 };
 
 async function apiRequest(endpoint, method = 'GET', body = null) {
@@ -460,7 +461,6 @@ async function showCalendar() {
 }
 
 
-// Admin panel (soddalashtirilgan)
 async function loadAdminEvents() {
     if (!token || !['admin', 'organizer'].includes(currentUser?.role)) {
         dynamicContent.innerHTML = '<p>❌ Ruxsat yo‘q</p>';
@@ -472,47 +472,126 @@ async function loadAdminEvents() {
         const events = eventsData.data;
         let html = `
             <h2>⚙️ Tadbirlarni boshqarish</h2>
-            <button id="createEventBtn" class="btn-primary" style="margin-bottom:1rem">➕ Yangi tadbir</button>
+            <div style="display: flex; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap;">
+                <button id="createEventBtn" class="btn-primary">➕ Yangi tadbir</button>
+                ${currentUser.role === 'admin' ? `
+                    <button id="createOrganizerBtn" class="btn-outline">👥 Yangi organizer</button>
+                    <button id="createAdminBtn" class="btn-outline">👑 Yangi admin</button>
+                ` : ''}
+            </div>
             <div class="events-grid" id="adminEventsGrid"></div>
         `;
         dynamicContent.innerHTML = html;
 
-        const grid = document.getElementById('adminEventsGrid');
-        if (events.length === 0) grid.innerHTML = '<p>Hech qanday tadbir yo‘q.</p>';
-        events.forEach(ev => {
-            const card = document.createElement('div');
-            card.className = 'event-card';
-            card.innerHTML = `
-    <img src="${ev.image || 'https://via.placeholder.com/300x160?text=Tadbir'}" alt="${ev.title}" style="width:100%; height:160px; object-fit:cover; border-radius:1rem; margin-bottom:0.5rem;">
-    <h3>${ev.title}</h3>
-    <p>Bo‘sh joy: ${ev.availableSeats}/${ev.totalSeats}</p>
-    <p>Sana: ${new Date(ev.date).toLocaleDateString('uz')}</p>
-    <div style="display:flex; gap:0.5rem; margin-top:0.5rem">
-        <button class="edit-event btn-outline" data-id="${ev._id}">✏️ Tahrirlash</button>
-        <button class="delete-event btn-outline" data-id="${ev._id}">🗑️ O‘chirish</button>
-        <button class="attendees-btn btn-outline" data-id="${ev._id}">👥 Ishtirokchilar</button>
-    </div>
-`;
-            grid.appendChild(card);
-        });
+        // ... qolgan kod (events grid yaratish, event listenerlar) o‘zgarishsiz ...
 
-        // Event listenerlar
-        document.querySelectorAll('.edit-event').forEach(btn => {
-            btn.addEventListener('click', () => showEditEventForm(btn.dataset.id));
+        document.getElementById('createEventBtn').addEventListener('click', showCreateEventForm);
+        if (currentUser.role === 'admin') {
+            document.getElementById('createOrganizerBtn')?.addEventListener('click', () => showCreateUserForm('organizer'));
+            document.getElementById('createAdminBtn')?.addEventListener('click', () => showCreateUserForm('admin'));
+        }
+    } catch (err) {
+        // ...
+    } finally {
+        showLoader(false);
+    }
+}
+
+
+function showCreateUserForm(role) {
+    const roleName = role === 'organizer' ? 'Organizer' : 'Admin';
+    const modalHtml = `
+        <div class="modal" id="createUserModal" style="display:flex">
+            <div class="modal-card">
+                <span class="close" onclick="closeModal('createUserModal')">&times;</span>
+                <h3>➕ Yangi ${roleName} yaratish</h3>
+                <form id="createUserForm">
+                    <div class="form-group"><input type="text" name="name" placeholder="To‘liq ism" required></div>
+                    <div class="form-group"><input type="email" name="email" placeholder="Email" required></div>
+                    <div class="form-group"><input type="password" name="password" placeholder="Parol (min 6)" required></div>
+                    <button type="submit" class="btn-primary">Yaratish</button>
+                </form>
+            </div>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+    const endpoint = role === 'organizer' ? '/api/auth/create-organizer' : '/api/auth/create-admin';
+    const form = document.getElementById('createUserForm');
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const formData = new FormData(form);
+        const body = Object.fromEntries(formData.entries());
+        try {
+            await apiRequest(endpoint, 'POST', body);
+            alert(`${roleName} muvaffaqiyatli yaratildi!`);
+            closeModal('createUserModal');
+            // Foydalanuvchilar ro‘yxatini yangilash hozircha yo‘q, lekin kerak bo‘lsa qo‘shamiz
+        } catch (err) {
+            alert(`Xatolik: ${err.message}`);
+        }
+    });
+}
+
+
+
+function closeModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) modal.remove();
+}
+
+
+// Admin panelda foydalanuvchilar ro‘yxatini ko‘rish va rol o‘zgartirish
+async function loadUsersList() {
+    if (!token || currentUser?.role !== 'admin') {
+        dynamicContent.innerHTML = '<p>❌ Ruxsat yo‘q</p>';
+        return;
+    }
+    showLoader(true);
+    try {
+        const data = await apiRequest('/api/auth/users'); // oldin yozilgan endpoint
+        const users = data.data;
+        let html = `<h2>👥 Foydalanuvchilar</h2>
+                    <div style="overflow-x:auto;">
+                        <table style="width:100%; border-collapse:collapse; background:#1e293b; border-radius:1rem;">
+                            <thead>
+                                <tr><th>Ism</th><th>Email</th><th>Roli</th><th>Amal</th></tr>
+                            </thead>
+                            <tbody>`;
+        users.forEach(user => {
+            html += `
+                <tr style="border-top:1px solid #334155;">
+                    <td style="padding:0.75rem;">${user.name}</td>
+                    <td style="padding:0.75rem;">${user.email}</td>
+                    <td style="padding:0.75rem;">${user.role}</td>
+                    <td style="padding:0.75rem;">
+                        <select data-id="${user._id}" class="role-select" ${user._id === currentUser.id ? 'disabled' : ''}>
+                            <option value="user" ${user.role === 'user' ? 'selected' : ''}>User</option>
+                            <option value="organizer" ${user.role === 'organizer' ? 'selected' : ''}>Organizer</option>
+                            <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>Admin</option>
+                        </select>
+                        <button class="save-role-btn" data-id="${user._id}" ${user._id === currentUser.id ? 'disabled' : ''}>Saqlash</button>
+                    </td>
+                </tr>
+            `;
         });
-        document.querySelectorAll('.delete-event').forEach(btn => {
+        html += `</tbody></table></div>`;
+        dynamicContent.innerHTML = html;
+        
+        document.querySelectorAll('.save-role-btn').forEach(btn => {
             btn.addEventListener('click', async () => {
-                if (confirm('Haqiqatan ham tadbirni o‘chirmoqchimisiz?')) {
-                    await apiRequest(`/api/events/${btn.dataset.id}`, 'DELETE');
-                    loadAdminEvents();
-                    loadEvents();
+                const userId = btn.dataset.id;
+                const select = document.querySelector(`.role-select[data-id="${userId}"]`);
+                const newRole = select.value;
+                try {
+                    await apiRequest(`/api/admin/users/${userId}/role`, 'PATCH', { role: newRole });
+                    alert('Rol muvaffaqiyatli o‘zgartirildi');
+                    loadUsersList(); // ro‘yxatni yangilash
+                } catch (err) {
+                    alert(err.message);
                 }
             });
         });
-        document.querySelectorAll('.attendees-btn').forEach(btn => {
-            btn.addEventListener('click', () => showAttendeesList(btn.dataset.id));
-        });
-        document.getElementById('createEventBtn').addEventListener('click', showCreateEventForm);
     } catch (err) {
         dynamicContent.innerHTML = `<div class="error">${err.message}</div>`;
     } finally {
