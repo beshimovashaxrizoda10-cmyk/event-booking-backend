@@ -523,7 +523,6 @@ async function showCalendar() {
     }
 }
 
-
 async function loadAdminEvents() {
     if (!token || !['admin', 'organizer'].includes(currentUser?.role)) {
         dynamicContent.innerHTML = '<p>❌ Ruxsat yo‘q</p>';
@@ -546,7 +545,41 @@ async function loadAdminEvents() {
         `;
         dynamicContent.innerHTML = html;
 
-        // ... qolgan kod (events grid yaratish, event listenerlar) o‘zgarishsiz ...
+        const grid = document.getElementById('adminEventsGrid');
+        if (events.length === 0) grid.innerHTML = '<p>Hech qanday tadbir yo‘q.</p>';
+        events.forEach(ev => {
+            const card = document.createElement('div');
+            card.className = 'event-card';
+            card.innerHTML = `
+                <img src="${ev.image || 'https://via.placeholder.com/300x160?text=Tadbir'}" alt="${ev.title}" style="width:100%; height:160px; object-fit:cover; border-radius:1rem; margin-bottom:0.5rem;">
+                <h3>${ev.title}</h3>
+                <p>Bo‘sh joy: ${ev.availableSeats}/${ev.totalSeats}</p>
+                <p>Sana: ${new Date(ev.date).toLocaleDateString('uz')}</p>
+                <div style="display:flex; gap:0.5rem; margin-top:0.5rem">
+                    <button class="edit-event btn-outline" data-id="${ev._id}">✏️ Tahrirlash</button>
+                    <button class="delete-event btn-outline" data-id="${ev._id}">🗑️ O‘chirish</button>
+                    <button class="attendees-btn btn-outline" data-id="${ev._id}">👥 Ishtirokchilar</button>
+                </div>
+            `;
+            grid.appendChild(card);
+        });
+
+        // Event listenerlar
+        document.querySelectorAll('.edit-event').forEach(btn => {
+            btn.addEventListener('click', () => showEditEventForm(btn.dataset.id));
+        });
+        document.querySelectorAll('.delete-event').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                if (confirm('Haqiqatan ham tadbirni o‘chirmoqchimisiz?')) {
+                    await apiRequest(`/api/events/${btn.dataset.id}`, 'DELETE');
+                    loadAdminEvents();
+                    loadEvents();
+                }
+            });
+        });
+        document.querySelectorAll('.attendees-btn').forEach(btn => {
+            btn.addEventListener('click', () => showAttendeesList(btn.dataset.id));
+        });
 
         document.getElementById('createEventBtn').addEventListener('click', showCreateEventForm);
         if (currentUser.role === 'admin') {
@@ -554,11 +587,12 @@ async function loadAdminEvents() {
             document.getElementById('createAdminBtn')?.addEventListener('click', () => showCreateUserForm('admin'));
         }
     } catch (err) {
-        // ...
+        dynamicContent.innerHTML = `<div class="error">${err.message}</div>`;
     } finally {
         showLoader(false);
     }
 }
+
 
 
 function showCreateUserForm(role) {
