@@ -9,7 +9,6 @@ const generateToken = (id) => {
 };
 
 // @desc    Ro'yxatdan o'tish (oddiy foydalanuvchi)
-// @route   POST /api/auth/register
 const register = async (req, res) => {
   try {
     const { name, email, password } = req.body;
@@ -37,8 +36,7 @@ const register = async (req, res) => {
   }
 };
 
-// @desc    Admin tomonidan organizer yaratish
-// @route   POST /api/auth/create-organizer (faqat admin)
+
 const createOrganizer = async (req, res) => {
   try {
     const { name, email, password } = req.body;
@@ -48,7 +46,7 @@ const createOrganizer = async (req, res) => {
       return res.status(400).json({ success: false, error: 'Bu email allaqachon ro\'yxatdan o\'tgan' });
     }
     
-    // Organizer rolida yaratish
+ 
     const user = await User.create({ name, email, password, role: 'organizer' });
     
     res.status(201).json({
@@ -66,8 +64,7 @@ const createOrganizer = async (req, res) => {
   }
 };
 
-// @desc    Admin tomonidan admin yaratish
-// @route   POST /api/auth/create-admin (faqat super admin)
+
 const createAdmin = async (req, res) => {
   try {
     const { name, email, password } = req.body;
@@ -95,7 +92,6 @@ const createAdmin = async (req, res) => {
 };
 
 // @desc    Tizimga kirish
-// @route   POST /api/auth/login
 const login = async (req, res) => {
   try {
     const { email, password } = req.body;
