@@ -104,15 +104,20 @@ async function loadMyBookings() {
     showLoader(true);
     try {
         const data = await apiRequest('/api/bookings/my-bookings');
-        const bookings = data.data;
+        let bookings = data.data || [];
+        // Agar bookings massiv bo'lmasa, bo'sh massivga aylantirish
+        if (!Array.isArray(bookings)) bookings = [];
         let html = `<h2>📌 Mening bandlovlarim</h2><div class="booking-list">`;
         if (bookings.length === 0) html += `<p>Siz hali hech narsa band qilmagansiz.</p>`;
         bookings.forEach(b => {
+            // Event null bo'lsa, "O'chirilgan tadbir" matnini chiqarish
+            const eventTitle = b.event ? b.event.title : '❌ Tadbir o‘chirilgan';
+            const eventDate = b.event ? new Date(b.event.date).toLocaleDateString('uz') : 'Nomaʼlum sana';
             html += `
                 <div class="booking-item">
                     <div>
-                        <strong>${b.event.title}</strong><br>
-                        Sana: ${new Date(b.event.date).toLocaleDateString('uz')}<br>
+                        <strong>${eventTitle}</strong><br>
+                        Sana: ${eventDate}<br>
                         Joylar: ${b.seats} | Narx: ${b.totalPrice.toLocaleString()} so‘m<br>
                         Holat: <span class="status ${b.status}">${b.status === 'confirmed' ? 'Tasdiqlangan' : 'Bekor qilingan'}</span>
                     </div>
@@ -126,29 +131,25 @@ async function loadMyBookings() {
         html += `</div>`;
         dynamicContent.innerHTML = html;
 
-        // Bekor qilish tugmalari
         document.querySelectorAll('.cancel-btn').forEach(btn => {
             btn.addEventListener('click', async () => {
                 if (confirm('Bandlovni bekor qilmoqchimisiz?')) {
-                    try {
-                        await apiRequest(`/api/bookings/${btn.dataset.id}`, 'DELETE');
-                        alert('Bekor qilindi');
-                        loadMyBookings();
-                    } catch (err) { alert(err.message); }
+                    await apiRequest(`/api/bookings/${btn.dataset.id}`, 'DELETE');
+                    loadMyBookings();
                 }
             });
         });
-
-        // Tahrirlash tugmalari
         document.querySelectorAll('.edit-booking').forEach(btn => {
             btn.addEventListener('click', () => editBooking(btn.dataset.id));
         });
     } catch (err) {
-        dynamicContent.innerHTML = `<div class="error">${err.message}</div>`;
-    } finally { 
+        dynamicContent.innerHTML = `<div class="error">Xatolik: ${err.message}</div>`;
+    } finally {
         showLoader(false);
     }
 }
+
+
 
 async function loadUsersList() {
     if (!token || currentUser?.role !== 'admin') {
@@ -158,17 +159,13 @@ async function loadUsersList() {
     showLoader(true);
     try {
         const data = await apiRequest('/api/auth/users');
-        const users = data.data;
+        let users = data.data || [];
+        if (!Array.isArray(users)) users = [];
         let html = `<h2>👥 Foydalanuvchilar</h2>
                     <div style="overflow-x:auto;">
                         <table style="width:100%; border-collapse:collapse; background:#1e293b; border-radius:1rem;">
                             <thead>
-                                <tr>
-                                    <th style="padding:0.75rem;">Ism</th>
-                                    <th style="padding:0.75rem;">Email</th>
-                                    <th style="padding:0.75rem;">Roli</th>
-                                    <th style="padding:0.75rem;">Amal</th>
-                                </tr>
+                                <tr><th>Ism</th><th>Email</th><th>Roli</th><th>Amal</th></tr>
                             </thead>
                             <tbody>`;
         users.forEach(user => {
@@ -191,7 +188,6 @@ async function loadUsersList() {
         html += `</tbody>${'</table>'}</div>`;
         dynamicContent.innerHTML = html;
 
-        // Saqlash tugmalariga event listener
         document.querySelectorAll('.save-role-btn').forEach(btn => {
             btn.addEventListener('click', async () => {
                 const userId = btn.dataset.id;
@@ -200,18 +196,20 @@ async function loadUsersList() {
                 try {
                     await apiRequest(`/api/admin/users/${userId}/role`, 'PATCH', { role: newRole });
                     alert('Rol muvaffaqiyatli o‘zgartirildi');
-                    loadUsersList(); // ro‘yxatni yangilash
+                    loadUsersList();
                 } catch (err) {
-                    alert(`Xatolik: ${err.message}`);
+                    alert('Xatolik: ' + err.message);
                 }
             });
         });
     } catch (err) {
-        dynamicContent.innerHTML = `<div class="error">${err.message}</div>`;
+        dynamicContent.innerHTML = `<div class="error">Xatolik: ${err.message}</div>`;
     } finally {
         showLoader(false);
     }
 }
+
+
 
 
 async function editBooking(bookingId) {
@@ -254,6 +252,8 @@ async function bookEvent(eventId) {
         loadEvents();
     } catch (err) { alert(err.message); }
 }
+
+
 
 
 async function showCreateEventForm() {
@@ -484,44 +484,51 @@ function initNavigation() {
 }
 
 
+
+
 async function showCalendar() {
     showLoader(true);
     try {
         const eventsData = await apiRequest('/api/events');
-        const events = eventsData.data.map(ev => ({
+        let events = eventsData.data || [];
+        if (!Array.isArray(events)) events = [];
+
+        const calendarEvents = events.map(ev => ({
             title: ev.title,
             start: ev.date,
-            url: `/event/${ev._id}`, // ixtiyoriy, event sahifasiga o'tish
+            url: `/event/${ev._id}`,
             extendedProps: {
                 location: ev.location,
                 availableSeats: ev.availableSeats
             }
         }));
+
         let html = `<div id="calendar" style="background: white; padding: 1rem; border-radius: 1rem;"></div>`;
         dynamicContent.innerHTML = html;
-        
+
         const calendarEl = document.getElementById('calendar');
         const calendar = new FullCalendar.Calendar(calendarEl, {
             initialView: 'dayGridMonth',
-            events: events,
+            events: calendarEvents,
             headerToolbar: {
                 left: 'prev,next today',
                 center: 'title',
                 right: 'dayGridMonth,dayGridWeek'
             },
-            locale: 'uz', // o‘zbekcha (agar kerak bo‘lsa)
+            locale: 'uz',
             eventClick: function(info) {
-                // Event kliklanganda batafsil ma'lumot yoki band qilish oynasi
                 alert(`Tadbir: ${info.event.title}\nManzil: ${info.event.extendedProps.location}\nBo‘sh joy: ${info.event.extendedProps.availableSeats}`);
             }
         });
         calendar.render();
     } catch (err) {
-        dynamicContent.innerHTML = `<div class="error">Xatolik: ${err.message}</div>`;
+        dynamicContent.innerHTML = `<div class="error">Kalendar yuklanmadi: ${err.message}</div>`;
     } finally {
         showLoader(false);
     }
 }
+
+
 
 async function loadAdminEvents() {
     if (!token || !['admin', 'organizer'].includes(currentUser?.role)) {
