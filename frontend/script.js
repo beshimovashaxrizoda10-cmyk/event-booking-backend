@@ -152,6 +152,7 @@ async function loadMyBookings() {
 
 
 async function loadUsersList() {
+    console.log("loadUsersList chaqirildi");
     if (!token || currentUser?.role !== 'admin') {
         dynamicContent.innerHTML = '<p>❌ Ruxsat yo‘q</p>';
         return;
@@ -467,26 +468,17 @@ function initNavigation() {
             if (page === 'events') await loadEvents();
             else if (page === 'my-bookings') await loadMyBookings();
             else if (page === 'admin-events') await loadAdminEvents();
+            else if (page === 'calendar') await showCalendar();
+            else if (page === 'users') await loadUsersList();
         });
     });
-    document.getElementById('loginBtn')?.addEventListener('click', () => openAuthModal('login'));
-    document.getElementById('registerBtn')?.addEventListener('click', () => openAuthModal('register'));
-    document.getElementById('logoutBtn')?.addEventListener('click', () => {
-        localStorage.removeItem('token');
-        token = null;
-        currentUser = null;
-        updateUIBasedOnAuth();
-        loadEvents();
-    });
-    document.querySelector('.close')?.addEventListener('click', () => document.getElementById('authModal').style.display = 'none');
-    window.onclick = (e) => { if (e.target === document.getElementById('authModal')) document.getElementById('authModal').style.display = 'none'; };
-    document.getElementById('menuIcon')?.addEventListener('click', () => document.getElementById('navMenu').classList.toggle('show'));
 }
 
 
 
 
 async function showCalendar() {
+    console.log("showCalendar chaqirildi");
     showLoader(true);
     try {
         const eventsData = await apiRequest('/api/events');
