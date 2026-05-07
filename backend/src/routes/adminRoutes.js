@@ -4,7 +4,9 @@ const { protect, admin } = require('../middlewares/authMiddleware');
 
 const router = express.Router();
 
-router.use(protect, admin); // barcha endpointlar admin uchun
+// Barcha route'lar admin va login talab qiladi
+router.use(protect, admin);
+
 router.patch('/users/:userId/role', updateUserRole);
 
 module.exports = router;
