@@ -465,15 +465,15 @@ function initNavigation() {
             const page = btn.dataset.page;
             btns.forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
-            if (page === 'events') await loadEvents();
-            else if (page === 'my-bookings') await loadMyBookings();
-            else if (page === 'admin-events') await loadAdminEvents();
-            else if (page === 'calendar') await showCalendar();
-            else if (page === 'users') await loadUsersList();
+            if (pages[page]) {
+                await pages[page]();
+            } else {
+                console.warn(`Sahifa topilmadi: ${page}`);
+            }
         });
     });
-}
 
+}
 
 
 
