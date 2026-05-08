@@ -2,8 +2,7 @@ const Booking = require('../models/Booking');
 const Event = require('../models/Event');
 const mongoose = require('mongoose');
 
-// @desc    Joy band qilish
-// @route   POST /api/bookings
+// Joy band qilish
 const createBooking = async (req, res) => {
   const session = await mongoose.startSession();
   session.startTransaction();
@@ -23,7 +22,7 @@ const createBooking = async (req, res) => {
       return res.status(400).json({ success: false, error: `Faqat ${event.availableSeats} ta joy qolgan` });
     }
 
-    // 2. Dublikat booking tekshirish (user bu eventga oldin band qilganmi?)
+    // (user bu eventga oldin band qilganmi?)
     const existingBooking = await Booking.findOne({
       user: req.user.id,
       event: eventId,
@@ -124,8 +123,7 @@ const cancelBooking = async (req, res) => {
   }
 };
 
-// @desc    Event ishtirokchilari ro‘yxati (faqat event yaratuvchisi yoki admin)
-// @route   GET /api/events/:eventId/attendees
+// @desc    Event ishtirokchilari ro‘yxati
 const getAttendees = async (req, res) => {
   try {
     const event = await Event.findById(req.params.eventId);
@@ -133,7 +131,6 @@ const getAttendees = async (req, res) => {
       return res.status(404).json({ success: false, error: 'Event topilmadi' });
     }
 
-    // Ruxsat: faqat event yaratuvchisi yoki admin
     if (event.createdBy.toString() !== req.user.id && req.user.role !== 'admin') {
       return res.status(403).json({ success: false, error: 'Ruxsat yo‘q' });
     }

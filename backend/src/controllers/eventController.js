@@ -1,7 +1,5 @@
 const Event = require('../models/Event');
 
-// @desc    Yangi event yaratish (faqat organizer va admin)
-// @route   POST /api/events
 const createEvent = async (req, res) => {
   try {
     req.body.createdBy = req.user.id;
@@ -16,8 +14,6 @@ const createEvent = async (req, res) => {
   }
 };
 
-// @desc    Barcha eventlarni ko'rish
-// @route   GET /api/events
 const getEvents = async (req, res) => {
   try {
     const { search, category, location, minDate, maxDate, sort } = req.query;
@@ -67,7 +63,7 @@ const getEvents = async (req, res) => {
 };
 
 // @desc    Bitta eventni ko'rish
-// @route   GET /api/events/:id
+
 const getEventById = async (req, res) => {
   try {
     const event = await Event.findById(req.params.id)
@@ -83,8 +79,7 @@ const getEventById = async (req, res) => {
   }
 };
 
-// @desc    Eventni yangilash (faqat event yaratuvchisi yoki admin)
-// @route   PUT /api/events/:id
+// @desc    Eventni yangilash 
 const updateEvent = async (req, res) => {
   try {
     let event = await Event.findById(req.params.id);
@@ -93,7 +88,6 @@ const updateEvent = async (req, res) => {
       return res.status(404).json({ success: false, error: 'Event topilmadi' });
     }
     
-    // Check permission: creator or admin
     if (event.createdBy.toString() !== req.user.id && req.user.role !== 'admin') {
       return res.status(403).json({ 
         success: false, 
@@ -112,8 +106,7 @@ const updateEvent = async (req, res) => {
   }
 };
 
-// @desc    Eventni o'chirish (faqat event yaratuvchisi yoki admin)
-// @route   DELETE /api/events/:id
+// @desc    Eventni o'chirish 
 const deleteEvent = async (req, res) => {
   try {
     const event = await Event.findById(req.params.id);

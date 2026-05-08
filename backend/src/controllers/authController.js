@@ -8,7 +8,6 @@ const generateToken = (id) => {
   });
 };
 
-// @desc    Ro'yxatdan o'tish (oddiy foydalanuvchi)
 const register = async (req, res) => {
   try {
     const { name, email, password } = req.body;
@@ -17,8 +16,6 @@ const register = async (req, res) => {
     if (userExists) {
       return res.status(400).json({ success: false, error: 'Bu email allaqachon ro\'yxatdan o\'tgan' });
     }
-    
-    // Oddiy user sifatida ro'yxatdan o'tadi
     const user = await User.create({ name, email, password, role: 'user' });
     
     res.status(201).json({
@@ -91,7 +88,7 @@ const createAdmin = async (req, res) => {
   }
 };
 
-// @desc    Tizimga kirish
+// Tizimga kirish
 const login = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -121,14 +118,12 @@ const login = async (req, res) => {
   }
 };
 
-// @desc    O'z ma'lumotlarini ko'rish
-// @route   GET /api/auth/me
+// O'z ma'lumotlarini ko'rish
 const getMe = async (req, res) => {
   res.json({ success: true, data: req.user });
 };
 
-// @desc    Barcha foydalanuvchilarni ko'rish (faqat admin)
-// @route   GET /api/auth/users
+//Barcha foydalanuvchilarni ko'rish (faqat admin)
 const getAllUsers = async (req, res) => {
   try {
     const users = await User.find({}).select('-password');
